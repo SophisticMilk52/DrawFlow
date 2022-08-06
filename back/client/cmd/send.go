@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -56,23 +55,12 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		wd, err := os.Getwd()
-		if err != nil {
-			fmt.Println(err.Error())
-		}
 		msg := Message{
 			Type:    1,
 			Msg:     string(fileReader(filename)),
 			Channel: Channel,
 		}
-		sender(filename, wd, msg)
-		wd, err = os.Getwd()
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		commandCode := exec.Command("code", wd)
-		err = commandCode.Run()
+		sender(filename, msg)
 
 		if err != nil {
 			log.Fatal("VS Code executable file not found in %PATH%")
@@ -115,7 +103,7 @@ func fileReader(path string) []byte {
 	Myfile.Close()
 	return bytes
 }
-func sender(path, pw string, message Message) {
+func sender(path string, message Message) {
 	c, err := net.Dial("tcp", ":8888")
 	if err != nil {
 		fmt.Println(err)

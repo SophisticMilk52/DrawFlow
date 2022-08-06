@@ -28,18 +28,37 @@ var receiveCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		initReceive()
-		fmt.Println("--------------")
+		addr := "localhost:"
+		s, err := net.Listen("tcp", addr)
+		initSend(s.Addr().String())
+		initReceive(s, err)
 	},
 }
 
-func ClientReceive() {
-	s, err := net.Listen("tcp", ":9999")
+func ClientSend(address string) {
+	addr := "localhost:8888"
+	message := Message{
+		Type:    0,
+		Channel: channel,
+		Msg:     "",
+		Addres:  address,
+	}
+	c, err := net.Dial("tcp", addr)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = gob.NewEncoder(c).Encode(message)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c.Close()
+}
+func ClientReceive(s net.Listener, err error) {
 	if err != nil {
 		fmt.Print(err)
 		return
 	}
-
 	for {
 		c, err := s.Accept()
 		if err != nil {
@@ -52,12 +71,7 @@ func ClientReceive() {
 }
 
 func handleClientReceive(c net.Conn) {
-	receiver := Message{
-		Type:    0,
-		Channel: channel,
-		Msg:     "",
-	}
-
+	var receiver Message
 	err := gob.NewDecoder(c).Decode(&receiver)
 	if err != nil {
 		fmt.Println(err)
@@ -65,7 +79,7 @@ func handleClientReceive(c net.Conn) {
 	} else {
 		fmt.Println("Mensaje:", receiver.Msg)
 	}
-
+	c.Close()
 }
 
 func init() {
@@ -73,15 +87,16 @@ func init() {
 	receiveCmd.Flags().StringVarP(&channel, "channel", "c", "", "Especify the channel of the client")
 	receiveCmd.MarkFlagRequired("channel")
 }
-
-func initReceive() {
-	go ClientReceive()
-	var input string
-	fmt.Scanln(&input)
+func initSend(addr string) {
+	go ClientSend(addr)
+}
+func initReceive(s net.Listener, err error) {
+	ClientReceive(s, err)
 }
 
 type Message struct {
 	Type    int
 	Msg     string
 	Channel string
+	Addres  string
 }
