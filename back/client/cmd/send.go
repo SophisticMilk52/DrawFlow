@@ -21,7 +21,7 @@ var Channel string
 // sendCmd represents the send command
 var sendCmd = &cobra.Command{
 	Use:   "send <path> <ch>",
-	Short: "A brief description of your command",
+	Short: "Client that sends files",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
