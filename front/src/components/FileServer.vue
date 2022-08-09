@@ -1,8 +1,32 @@
 <template>
   <div class="header">
     <h1>File Server</h1>
-    <div class="graph">
-      <Apexchart width="500" type="bar" :options="getOptions" :series="getData"></Apexchart>
+    <div class="container">
+
+      <div class="graph">
+        <h3>Senders</h3>
+        <Apexchart width="500" type="bar" :options="getOptions" :series="getData"></Apexchart>
+      </div>
+
+      <div class="graph">
+        <h3>Receivers</h3>
+        <table id="customers">
+          <thead>
+            <tr>
+              <th scope="col">Ip</th>
+              <th scope="col">Channel</th>
+              <th scope="col">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="value in subcriber" :key="value.addres">
+              <td>{{ value.addres }}</td>
+              <td>{{ value.channel }}</td>
+              <td>{{ value.timestamp }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -26,11 +50,14 @@ export default {
     };
   }, mounted() {
     // while (this.bool) {
-    setInterval(null, 5000)
-    this.senderInfo()
-    this.subscriberInfo()
-    //}
-    this.groupBy()
+    var s = this.senderInfo();
+    var r = this.subscriberInfo();
+    var g = this.groupBy()
+    setInterval(function () {
+      s;
+      r;
+      g;
+    }, 5 * 1000);
   },
   computed: {
     getOptions() {
@@ -65,7 +92,7 @@ export default {
         for (let j = 0; j < this.channels.length; j++) {
           var cont = 0
           for (let index = 0; index < this.outputs[input].length; index++) {
-     
+
             if (this.outputs[input][index].channel == this.channels[j]) {
               cont += this.outputs[input][index].size;
             }
@@ -84,7 +111,7 @@ export default {
         this.keys.forEach(k => {
           arr.push(mapa.get(k)[count])
         })
-        aux.push({ name: ch, data: arr })
+        aux.push({ name: "canal: " + ch, data: arr })
         count++;
       })
 
@@ -140,14 +167,45 @@ export default {
   flex-direction: column;
 }
 
+.container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .graph {
   display: flex;
   margin-top: 150px;
-  flex-direction: row;
-  justify-content: space-between;
+  flex-direction: column;
+  justify-content: center;
 }
 
-body {
-  color: none;
+#customers {
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#customers td,
+#customers th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+#customers tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+#customers tr:hover {
+  background-color: #ddd;
+}
+
+#customers th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #04AA6D;
+  color: white;
 }
 </style>

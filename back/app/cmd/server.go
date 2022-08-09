@@ -75,6 +75,7 @@ func servidor() {
 		fmt.Println("Llego una solicitud")
 
 		go handleClient(c, addr, channel)
+
 		v := <-channel
 		if v.Type == 1 {
 			time.Sleep(2 * time.Second)
@@ -86,15 +87,34 @@ func servidor() {
 			}
 			Senders = append(Senders, t)
 			go sendData(v)
+
 		}
+
+		go checkConection()
 
 	}
 }
 
-func checkConection(c net.Conn) {
-	time.Sleep(5 * time.Second)
-	for _, elem := range Clients {
-		fmt.Println(elem)
+func checkConection() {
+	fmt.Println(len(Clients), Clients)
+	for {
+		time.Sleep(15 * time.Second)
+		//timeout := time.Duration(5 * time.Second)
+		for i := 0; i < len(Clients); i++ {
+			//	for _, elem := range Clients {
+			fmt.Println(len(Clients), Clients[i])
+			time.Sleep(10 * time.Second)
+			c, err := net.Dial("tcp", Clients[i].Addres)
+			//	_, err := c.Write([]byte("OK"))
+			fmt.Println(c)
+			if err != nil {
+				fmt.Println(Clients[i].Addres, "not responding", err.Error())
+				Clients = append(Clients[:i], Clients[i+1:]...)
+			} else {
+				c.Close()
+				fmt.Println(Clients[i].Addres, "responding")
+			}
+		}
 	}
 }
 
@@ -123,10 +143,10 @@ func handleClient(c net.Conn, addr string, canal chan Message) {
 	}
 
 }
+
 func sendData(msg Message) {
 	value := mapa[msg.Channel]
 	for i := 0; i < len(value); i++ {
-
 		c, err := net.Dial("tcp", value[i])
 		if err != nil {
 			fmt.Println(err)
