@@ -90,7 +90,7 @@ func servidor() {
 
 		}
 
-		go checkConection()
+		//go checkConection()
 
 	}
 }
