@@ -6,8 +6,12 @@ package cmd
 
 import (
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net"
+	"net/http"
+
 	"time"
 
 	"github.com/spf13/cobra"
@@ -43,6 +47,8 @@ func init() {
 }
 
 var mapa map[string][]string = make(map[string][]string)
+var Clients []Todo
+var Senders []Sender
 
 func servidor() {
 	addr := "localhost:8888"
@@ -57,7 +63,7 @@ func servidor() {
 		panic(err)
 	}
 	channel := make(chan Message)
-	aux := host + ":3000"
+	go Run()
 	fmt.Printf("Listening on host: %s, port: %s\n", host, port)
 	for {
 
@@ -68,17 +74,32 @@ func servidor() {
 		}
 		fmt.Println("Llego una solicitud")
 
-		go handleClient(c, aux, addr, channel)
+		go handleClient(c, addr, channel)
 		v := <-channel
 		if v.Type == 1 {
 			time.Sleep(2 * time.Second)
+			t := Sender{
+				Addres:  c.LocalAddr().String(),
+				Channel: v.Channel,
+				Size:    len([]byte(v.Msg)),
+				Time:    time.Now().Format(time.ANSIC),
+			}
+			Senders = append(Senders, t)
 			go sendData(v)
 		}
+
+	}
+}
+
+func checkConection(c net.Conn) {
+	time.Sleep(5 * time.Second)
+	for _, elem := range Clients {
+		fmt.Println(elem)
 	}
 }
 
 //
-func handleClient(c net.Conn, host, addr string, canal chan Message) {
+func handleClient(c net.Conn, addr string, canal chan Message) {
 	var receiver Message
 
 	err := gob.NewDecoder(c).Decode(&receiver)
@@ -91,6 +112,12 @@ func handleClient(c net.Conn, host, addr string, canal chan Message) {
 			fmt.Println("CHANNEL:", receiver.Channel)
 			fmt.Println("Local adress:", receiver.Addres)
 			mapa[receiver.Channel] = append(mapa[receiver.Channel], receiver.Addres)
+			t := Todo{
+				Addres:  receiver.Addres,
+				Channel: receiver.Channel,
+				Time:    time.Now().Format(time.ANSIC),
+			}
+			Clients = append(Clients, t)
 		}
 
 	}
@@ -120,4 +147,34 @@ func listen() {
 	fmt.Println("Esperando clientes.....")
 	var input string
 	fmt.Scanln(&input)
+}
+
+type Todo struct {
+	Addres  string `json:"addres"`
+	Channel string `json:"channel"`
+	Time    string `json:"timestamp"`
+}
+type Sender struct {
+	Addres  string `json:"addres"`
+	Channel string `json:"channel"`
+	Size    int    `json:"size"`
+	Time    string `json:"timestamp"`
+}
+
+func Run() {
+	http.HandleFunc("/subscribers", getSubscribers)
+	http.HandleFunc("/sender", getSenders)
+	log.Fatal(http.ListenAndServe(":9090", nil))
+}
+
+func getSenders(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	fmt.Println("Senders desde server:", Senders)
+	json.NewEncoder(w).Encode(Senders)
+}
+
+func getSubscribers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	fmt.Println("Clients desde server:", Clients)
+	json.NewEncoder(w).Encode(Clients)
 }

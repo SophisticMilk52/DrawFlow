@@ -92,7 +92,7 @@ func fileReader(path string) []byte {
 		fmt.Println("Error opening file!!!")
 	}
 
-	byteBuff := make([]byte, 1024)
+	byteBuff := make([]byte, 1073741824)
 	totalLen, err := Myfile.Read(byteBuff)
 	if err != nil {
 		fmt.Println(err)

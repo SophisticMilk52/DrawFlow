@@ -1,13 +1,13 @@
 <template>
-<drawflow/>
+<FileServer/>
 </template>
 
 <script>
-import drawflow from './components/drawflow.vue'
+import FileServer from './components/FileServer.vue'
 export default {
   name: 'App',
   components: {
-    drawflow
+    FileServer
   }
 }
 </script>
@@ -32,8 +32,6 @@ html {
   max-height:  calc(100vh - 40px);
   margin: 20px;
   padding: 0;
-  background: #181818;
-  color: #f7f7f7;
 }
 #app {
   margin: 0px;
