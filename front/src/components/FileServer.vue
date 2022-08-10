@@ -19,7 +19,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="value in subcriber" :key="value.addres">
+            <tr v-for="value in getSubscribers" :key="value.addres">
               <td>{{ value.addres }}</td>
               <td>{{ value.channel }}</td>
               <td>{{ value.timestamp }}</td>
@@ -40,26 +40,29 @@ export default {
   },
   data() {
     return {
-      sender: Object,
-      subcriber: Object,
+      sender: {},
+      subscriber: Object,
       bool: true,
-      outputs: [],
       keys: [],
       channels: [],
-
+      outputs: [],
     };
-  }, mounted() {
-    // while (this.bool) {
-    var s = this.senderInfo();
-    var r = this.subscriberInfo();
-    var g = this.groupBy()
-    setInterval(function () {
-      s;
-      r;
-      g;
-    }, 5 * 1000);
+  },
+  mounted() {
+    this.senderInfo()
+    this.subscriberInfo()
+    //this.series()
+    setInterval(() => {
+      this.senderInfo()
+      this.subscriberInfo()
+      this.series()
+    }
+      , 7 * 1000)
   },
   computed: {
+    getSubscribers() {
+      return Object.values(this.subscriber);
+    },
     getOptions() {
       const aux = {
         chart: {
@@ -84,19 +87,38 @@ export default {
       return aux;
     },
     getData() {
-      console.log(this.channels)
-      console.log(this.outputs)
+      return Object.values(this.outputs)
+    },
+    groupBy() {
+      const MS_PER_HOURS = 60 * 1000;
+      var outputs = []
+      Object.values(this.sender).forEach(input => {
+        let time = new Date(input.timestamp).getTime();
+        let hour = Math.floor((time) / MS_PER_HOURS);
+        const key = MS_PER_HOURS * hour
+        if (!this.channels.includes(input.channel)) {
+          this.channels.push(input.channel);
+        }
+        if (!outputs[key]) { outputs[key] = []; this.keys.push(key); }
+        outputs[key].push(input);
+      });
+      return outputs
+    },
+  },
+  methods: {
+    series() {
+      var outputs = this.groupBy
       var mapa = new Map();
       this.keys.forEach(input => {
         const consolidate = []
         for (let j = 0; j < this.channels.length; j++) {
           var cont = 0
-          for (let index = 0; index < this.outputs[input].length; index++) {
+          for (let index = 0; index < outputs[input].length; index++) {
 
-            if (this.outputs[input][index].channel == this.channels[j]) {
-              cont += this.outputs[input][index].size;
+            if (outputs[input][index].channel == this.channels[j]) {
+              cont += outputs[input][index].size;
             }
-            if (index == this.outputs[input].length - 1) {
+            if (index == outputs[input].length - 1) {
               consolidate.push([input, cont])
             }
 
@@ -114,35 +136,22 @@ export default {
         aux.push({ name: "canal: " + ch, data: arr })
         count++;
       })
-
-      console.log("data", aux)
-      return aux
-    },
-    getSubscriber() {
-      return this.subscriber;
-    }
-  },
-  methods: {
-    groupBy() {
-      const MS_PER_HOURS = 60 * 1000;
-      Object.values(this.sender).forEach(input => {
-        let time = new Date(input.timestamp).getTime();
-        let hour = Math.floor((time) / MS_PER_HOURS);
-        const key = MS_PER_HOURS * hour
-        if (!this.channels.includes(input.channel)) {
-          this.channels.push(input.channel);
-        }
-        if (!this.outputs[key]) { this.outputs[key] = []; this.keys.push(key); }
-        this.outputs[key].push(input);
-      });
+      this.keys = []
+      this.outputs=aux
     },
     senderInfo() {
       axios
         .get(`http://localhost:9090/sender`)
         .then((response) => {
           console.log(response.data)
-          this.sender = response.data
-          this.groupBy()
+          if (response.data == null) {
+            throw Error("null or blanc value in sender API")
+          } else {
+            this.sender = response.data
+          }
+
+        }).catch(error => {
+          console.log("Error", error.message)
         });
     },
     subscriberInfo() {
@@ -150,7 +159,13 @@ export default {
         .get(`http://localhost:9090/subscribers`)
         .then((response) => {
           console.log(response.data)
-          this.subcriber = response.data
+          if (response.data == null) {
+            throw Error("null or blanc value in subscriber API")
+          } else {
+            this.subscriber = response.data
+          }
+        }).catch(error => {
+          console.log("Error", error.message)
         });
     }
   }

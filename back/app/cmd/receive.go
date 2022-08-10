@@ -9,6 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/spf13/cobra"
 )
@@ -31,14 +34,15 @@ var receiveCmd = &cobra.Command{
 		addr := "localhost:"
 		s, err := net.Listen("tcp", addr)
 		initSend(s.Addr().String())
+		go checkOut(s.Addr().String())
 		initReceive(s, err)
 	},
 }
 
-func ClientSend(address string) {
+func ClientSend(address string, t int) {
 	addr := "localhost:8888"
 	message := Message{
-		Type:    0,
+		Type:    t,
 		Channel: channel,
 		Msg:     "",
 		Addres:  address,
@@ -69,7 +73,16 @@ func ClientReceive(s net.Listener, err error) {
 		go handleClientReceive(c)
 	}
 }
-
+func checkOut(addr string) {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		fmt.Println(" Close session")
+		ClientSend(addr, 3)
+		os.Exit(1)
+	}()
+}
 func handleClientReceive(c net.Conn) {
 	var receiver Message
 	err := gob.NewDecoder(c).Decode(&receiver)
@@ -88,7 +101,7 @@ func init() {
 	receiveCmd.MarkFlagRequired("channel")
 }
 func initSend(addr string) {
-	go ClientSend(addr)
+	go ClientSend(addr, 0)
 }
 func initReceive(s net.Listener, err error) {
 	ClientReceive(s, err)
