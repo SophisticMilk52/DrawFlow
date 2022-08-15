@@ -7,13 +7,12 @@
         <h3>Senders</h3>
         <Apexchart width="500" type="bar" :options="getOptions" :series="getData"></Apexchart>
       </div>
-
       <div class="graph">
         <h3>Receivers</h3>
         <table id="customers">
           <thead>
             <tr>
-              <th scope="col">Ip</th>
+              <th scope="col">IP</th>
               <th scope="col">Channel</th>
               <th scope="col">Time</th>
             </tr>
@@ -33,6 +32,8 @@
 <script>
 import Apexchart from "vue3-apexcharts";
 import axios from "axios";
+
+const XAXIS_UPDATE_INTERVAL = 2500
 export default {
   name: 'FileServer',
   components: {
@@ -46,12 +47,16 @@ export default {
       keys: [],
       channels: [],
       outputs: [],
+      currentTimestamp: new Date().getTime(),
+      xaxisInterval: null,
+      // xAxisTimeWindow in minutes
+      xAxisTimeWindow: 15
     };
   },
   mounted() {
+    this.setXAxisTimeout()
     this.senderInfo()
     this.subscriberInfo()
-    //this.series()
     setInterval(() => {
       this.senderInfo()
       this.subscriberInfo()
@@ -63,25 +68,30 @@ export default {
     getSubscribers() {
       return Object.values(this.subscriber);
     },
+    getXAxisMin(){
+      return new Date(this.currentTimestamp-this.xAxisTimeWindow*60000).getTime()
+    },
     getOptions() {
       const aux = {
         chart: {
           id: '127.0.0.1:8888',
-          type: 'bar',
-          height: 350,
           stacked: true,
+          horizontal:true,
           toolbar: {
             show: true
           },
+          columnWidth: `${Math.round(100/this.xAxisTimeWindow)}%`,
+          borderRadius: 10,
+          distributed:true,
           zoom: {
             enabled: true
           }
         },
         xaxis: {
           type: "datetime",
-          labels: {
-            datetimeUTC: false
-          }
+          tickAmount: 20,
+          min: this.getXAxisMin,
+          max: this.currentTimestamp
         }
       }
       return aux;
@@ -105,7 +115,17 @@ export default {
       return outputs
     },
   },
+  unmounted(){
+    if(this.xaxisInterval){
+      this.xaxisInterval()
+    }
+  },
   methods: {
+    setXAxisTimeout(){
+      this.xaxisInterval=setInterval(()=> {
+        this.currentTimestamp = new Date().getTime()
+      },XAXIS_UPDATE_INTERVAL)
+    },
     series() {
       var outputs = this.groupBy
       var mapa = new Map();
@@ -145,7 +165,7 @@ export default {
         .then((response) => {
           console.log(response.data)
           if (response.data == null) {
-            throw Error("null or blanc value in sender API")
+            throw Error("null or blanK value in sender API")
           } else {
             this.sender = response.data
           }
@@ -160,7 +180,7 @@ export default {
         .then((response) => {
           console.log(response.data)
           if (response.data == null) {
-            throw Error("null or blanc value in subscriber API")
+            throw Error("null or blanK value in subscriber API")
           } else {
             this.subscriber = response.data
           }

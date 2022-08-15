@@ -8,6 +8,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -22,24 +23,27 @@ var channel string
 var receiveCmd = &cobra.Command{
 	Use:   "receive <channel>",
 	Short: "Program a client to receive documents",
-	Long:  `Especify witch channel do you want your client to run`,
+	Long:  `Specify which channel do you want your client to run`,
 
-	Args: func(cmd *cobra.Command, args []string) error {
+	Args: func(_ *cobra.Command, args []string) error {
 		if channel == "" && len(args) < 1 {
 			return errors.New("accepts 1 arg(s)")
 		}
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		addr := "localhost:"
 		s, err := net.Listen("tcp", addr)
+		if err != nil {
+			log.Fatalf("Could establish TCP connection: %s", err.Error())
+		}
 		initSend(s.Addr().String())
 		go checkOut(s.Addr().String())
-		initReceive(s, err)
+		initReceive(s)
 	},
 }
 
-func ClientSend(address string, t int) {
+func clientSend(address string, t int) {
 	addr := "localhost:8888"
 	message := Message{
 		Type:    t,
@@ -53,16 +57,14 @@ func ClientSend(address string, t int) {
 		return
 	}
 	err = gob.NewEncoder(c).Encode(message)
+	fmt.Println("Sucessfull connection!")
 	if err != nil {
 		fmt.Println(err)
 	}
 	c.Close()
 }
-func ClientReceive(s net.Listener, err error) {
-	if err != nil {
-		fmt.Print(err)
-		return
-	}
+
+func clientReceive(s net.Listener) {
 	for {
 		c, err := s.Accept()
 		if err != nil {
@@ -73,16 +75,18 @@ func ClientReceive(s net.Listener, err error) {
 		go handleClientReceive(c)
 	}
 }
+
 func checkOut(addr string) {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		fmt.Println(" Close session")
-		ClientSend(addr, 3)
+		fmt.Println("Close session")
+		clientSend(addr, 3)
 		os.Exit(1)
 	}()
 }
+
 func handleClientReceive(c net.Conn) {
 	var receiver Message
 	err := gob.NewDecoder(c).Decode(&receiver)
@@ -97,14 +101,17 @@ func handleClientReceive(c net.Conn) {
 
 func init() {
 	rootCmd.AddCommand(receiveCmd)
+	// TODO: Revisar para que sirve ese parametro en blanco
 	receiveCmd.Flags().StringVarP(&channel, "channel", "c", "", "Especify the channel of the client")
 	receiveCmd.MarkFlagRequired("channel")
 }
+
 func initSend(addr string) {
-	go ClientSend(addr, 0)
+	go clientSend(addr, 0)
 }
-func initReceive(s net.Listener, err error) {
-	ClientReceive(s, err)
+
+func initReceive(s net.Listener) {
+	clientReceive(s)
 }
 
 type Message struct {

@@ -28,7 +28,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		fmt.Println("File", File)
 		fmt.Println("Channel", Channel)
 		var filename string
@@ -55,14 +55,20 @@ to quickly create a Cobra application.`,
 			return
 		}
 
+		messageBytes, err := fileReader(filename)
+		if err != nil {
+			log.Fatalf("Failed to read file: %s", err.Error())
+		}
+
 		msg := Message{
 			Type:    1,
-			Msg:     string(fileReader(filename)),
+			Msg:     string(messageBytes),
 			Channel: Channel,
 		}
-		sender(filename, msg)
+		err = sender(msg)
 
 		if err != nil {
+			// TODO PONER UN MENSAJE QUE TENGA SENTIDO
 			log.Fatal("VS Code executable file not found in %PATH%")
 		}
 	},
@@ -70,11 +76,12 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(sendCmd)
-	sendCmd.Flags().StringVarP(&File, "file", "f", "", "Especify the route of the file")
-	sendCmd.Flags().StringVarP(&Channel, "channel", "c", "", "Especify the channel of the client")
+	sendCmd.Flags().StringVarP(&File, "file", "f", "", "Specify the route of the file")
+	sendCmd.Flags().StringVarP(&Channel, "channel", "c", "", "Specify the channel of the client")
 	sendCmd.MarkFlagRequired("file")
 	sendCmd.MarkFlagRequired("channel")
 }
+
 func FileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -86,32 +93,39 @@ func FileExists(path string) (bool, error) {
 	return false, err
 }
 
-func fileReader(path string) []byte {
+func fileReader(path string) ([]byte, error) {
 	Myfile, err := os.Open(path)
 	if err != nil {
 		fmt.Println("Error opening file!!!")
+		return nil, err
 	}
+
+	defer Myfile.Close()
 
 	byteBuff := make([]byte, 1073741824)
 	totalLen, err := Myfile.Read(byteBuff)
 	if err != nil {
 		fmt.Println(err)
+		return nil, err
 	}
 	bytes := byteBuff[:totalLen]
 	fmt.Printf("File Data: \n%s\n", string(bytes))
 
-	Myfile.Close()
-	return bytes
+	return bytes, nil
 }
-func sender(path string, message Message) {
+
+func sender(message Message) error {
 	c, err := net.Dial("tcp", ":8888")
+	defer c.Close()
 	if err != nil {
 		fmt.Println(err)
-		return
+		return err
 	}
 	err = gob.NewEncoder(c).Encode(message)
 	if err != nil {
 		fmt.Println(err)
+		return err
 	}
-	c.Close()
+
+	return nil
 }

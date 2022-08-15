@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 
 	"time"
 
@@ -47,8 +48,10 @@ func init() {
 }
 
 var mapa map[string][]string = make(map[string][]string)
-var Clients []Todo
-var Senders []Sender
+var clients []Receiver
+var senders []Sender
+var mutex sync.Mutex
+var wg sync.WaitGroup
 
 func servidor() {
 	addr := "localhost:8888"
@@ -63,57 +66,57 @@ func servidor() {
 		panic(err)
 	}
 	channel := make(chan Message)
-	go Run()
+	go runApi()
 	fmt.Printf("Listening on host: %s, port: %s\n", host, port)
-	for {
 
+	for {
+		wg.Add(3)
 		c, err := l.Accept()
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		fmt.Println("Llego una solicitud")
 
-		go handleClient(c, addr, channel)
+		go handleClient(c, channel, &mutex, &wg)
 
 		v := <-channel
 		if v.Type == 1 {
-			time.Sleep(2 * time.Second)
 			t := Sender{
 				Addres:  c.LocalAddr().String(),
 				Channel: v.Channel,
 				Size:    len([]byte(v.Msg)),
 				Time:    time.Now().Format(time.ANSIC),
 			}
-			fmt.Println("aqui append?")
-
-			go sendData(v, t)
+			go sendData(v, t, &mutex, &wg)
 
 		} else if v.Type == 3 {
-			go checkConection(v.Addres)
+			go checkConection(v.Addres, &mutex, &wg)
 		}
-
 	}
+
 }
 
-func checkConection(addr string) {
-	fmt.Println(len(Clients), Clients)
+//TODO RACE CONDITION, QUE PASA SI SE AGREGA UN CLIENTE NUEVO AL MISMO TIEMPO QUE SE ELIMINA
+func checkConection(addr string, m *sync.Mutex, wg *sync.WaitGroup) {
+
 	for {
-
-		for i := 0; i < len(Clients); i++ {
-
-			if Clients[i].Addres == addr {
-				fmt.Println(addr)
-				Clients = append(Clients[:i], Clients[i+1:]...)
+		for i := 0; i < len(clients); i++ {
+			if clients[i].Addres == addr {
+				m.Lock()
+				clients = append(clients[:i], clients[i+1:]...)
+				fmt.Printf("Logout client %s", addr)
+				fmt.Println("")
+				m.Unlock()
+				wg.Done()
 				continue
 			}
 		}
-		continue
 	}
 }
 
-//
-func handleClient(c net.Conn, addr string, canal chan Message) {
+// TODO RACE CONDITION, QUE PASA SI DOS CLIENTES CON EL MISMO CHANNE SE CONECTAN AL TIEMPO
+func handleClient(c net.Conn, canal chan Message, m *sync.Mutex, wg *sync.WaitGroup) {
+
 	var receiver Message
 
 	err := gob.NewDecoder(c).Decode(&receiver)
@@ -123,15 +126,19 @@ func handleClient(c net.Conn, addr string, canal chan Message) {
 	} else {
 		canal <- receiver
 		if receiver.Type == 0 {
-			fmt.Println("CHANNEL:", receiver.Channel)
-			fmt.Println("Local adress:", receiver.Addres)
+			fmt.Printf("New request arrived in channel %s and adress %s", receiver.Channel, receiver.Addres)
+			fmt.Println("")
 			mapa[receiver.Channel] = append(mapa[receiver.Channel], receiver.Addres)
-			t := Todo{
+			t := Receiver{
 				Addres:  receiver.Addres,
 				Channel: receiver.Channel,
 				Time:    time.Now().Format(time.ANSIC),
 			}
-			Clients = append(Clients, t)
+			m.Lock()
+			// TODO RACE CONDITION, CLIENTES MODIFICADO CONCURRENTEMENTE (REVISR MUTEX, SYNCMAC, SEMAFORO, ETC)
+			clients = append(clients, t)
+			m.Unlock()
+			wg.Done()
 		} else {
 			c.Close()
 		}
@@ -140,34 +147,39 @@ func handleClient(c net.Conn, addr string, canal chan Message) {
 
 }
 
-func sendData(msg Message, t Sender) {
+func sendData(msg Message, t Sender, m *sync.Mutex, wg *sync.WaitGroup) error {
+
 	value := mapa[msg.Channel]
 	for i := 0; i < len(value); i++ {
 		c, err := net.Dial("tcp", value[i])
 		if err != nil {
 			fmt.Println(err)
-			return
+			return err
 		}
 
 		err = gob.NewEncoder(c).Encode(msg)
 		if err != nil {
 			fmt.Println(err)
+			return err
 		}
-		Senders = append(Senders, t)
-		fmt.Println("Mensaje enviado con exito")
+		m.Lock()
+		// TODO RACE CONDITION, CONCURRENT WRITE TO SLICE
+		senders = append(senders, t)
+		fmt.Println("Message successfully send")
+		m.Unlock()
+		wg.Done()
 		c.Close()
 	}
-	return
-
+	return nil
 }
 func listen() {
 	go servidor()
-	fmt.Println("Esperando clientes.....")
+	fmt.Println("Waiting for clients.....")
 	var input string
 	fmt.Scanln(&input)
 }
 
-type Todo struct {
+type Receiver struct {
 	Addres  string `json:"addres"`
 	Channel string `json:"channel"`
 	Time    string `json:"timestamp"`
@@ -179,20 +191,18 @@ type Sender struct {
 	Time    string `json:"timestamp"`
 }
 
-func Run() {
+func runApi() {
 	http.HandleFunc("/subscribers", getSubscribers)
 	http.HandleFunc("/sender", getSenders)
 	log.Fatal(http.ListenAndServe(":9090", nil))
 }
 
-func getSenders(w http.ResponseWriter, r *http.Request) {
+func getSenders(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	fmt.Println("Senders desde server:", Senders)
-	json.NewEncoder(w).Encode(Senders)
+	json.NewEncoder(w).Encode(senders)
 }
 
-func getSubscribers(w http.ResponseWriter, r *http.Request) {
+func getSubscribers(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	fmt.Println("Clients desde server:", Clients)
-	json.NewEncoder(w).Encode(Clients)
+	json.NewEncoder(w).Encode(clients)
 }
