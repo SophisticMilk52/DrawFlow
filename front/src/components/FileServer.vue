@@ -153,7 +153,7 @@ export default {
         this.keys.forEach(k => {
           arr.push(mapa.get(k)[count])
         })
-        aux.push({ name: "canal: " + ch, data: arr })
+        aux.push({ name: "ch: " + ch, data: arr })
         count++;
       })
       this.keys = []
