@@ -92,11 +92,11 @@ func servidor() {
 		} else if v.Type == 3 {
 			go checkConection(v.Addres, &mutex, &wg)
 		}
+
 	}
 
 }
 
-//TODO RACE CONDITION, QUE PASA SI SE AGREGA UN CLIENTE NUEVO AL MISMO TIEMPO QUE SE ELIMINA
 func checkConection(addr string, m *sync.Mutex, wg *sync.WaitGroup) {
 
 	for {
@@ -114,7 +114,6 @@ func checkConection(addr string, m *sync.Mutex, wg *sync.WaitGroup) {
 	}
 }
 
-// TODO RACE CONDITION, QUE PASA SI DOS CLIENTES CON EL MISMO CHANNE SE CONECTAN AL TIEMPO
 func handleClient(c net.Conn, canal chan Message, m *sync.Mutex, wg *sync.WaitGroup) {
 
 	var receiver Message
@@ -135,7 +134,6 @@ func handleClient(c net.Conn, canal chan Message, m *sync.Mutex, wg *sync.WaitGr
 				Time:    time.Now().Format(time.ANSIC),
 			}
 			m.Lock()
-			// TODO RACE CONDITION, CLIENTES MODIFICADO CONCURRENTEMENTE (REVISR MUTEX, SYNCMAC, SEMAFORO, ETC)
 			clients = append(clients, t)
 			m.Unlock()
 			wg.Done()
@@ -163,7 +161,6 @@ func sendData(msg Message, t Sender, m *sync.Mutex, wg *sync.WaitGroup) error {
 			return err
 		}
 		m.Lock()
-		// TODO RACE CONDITION, CONCURRENT WRITE TO SLICE
 		senders = append(senders, t)
 		fmt.Println("Message successfully send")
 		m.Unlock()
@@ -173,6 +170,7 @@ func sendData(msg Message, t Sender, m *sync.Mutex, wg *sync.WaitGroup) error {
 	return nil
 }
 func listen() {
+	defer wg.Wait()
 	go servidor()
 	fmt.Println("Waiting for clients.....")
 	var input string
@@ -192,9 +190,14 @@ type Sender struct {
 }
 
 func runApi() {
-	http.HandleFunc("/subscribers", getSubscribers)
-	http.HandleFunc("/sender", getSenders)
-	log.Fatal(http.ListenAndServe(":9090", nil))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/subscribers", getSubscribers)
+	mux.HandleFunc("/sender", getSenders)
+	server := &http.Server{
+		Addr:    "localhost:9090",
+		Handler: mux,
+	}
+	log.Fatal(server.ListenAndServe())
 }
 
 func getSenders(w http.ResponseWriter, _ *http.Request) {

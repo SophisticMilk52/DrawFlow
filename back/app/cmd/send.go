@@ -68,8 +68,7 @@ to quickly create a Cobra application.`,
 		err = sender(msg)
 
 		if err != nil {
-			// TODO PONER UN MENSAJE QUE TENGA SENTIDO
-			log.Fatal("VS Code executable file not found in %PATH%")
+			log.Fatal("Error in send message")
 		}
 	},
 }

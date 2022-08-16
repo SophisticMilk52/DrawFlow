@@ -68,21 +68,21 @@ export default {
     getSubscribers() {
       return Object.values(this.subscriber);
     },
-    getXAxisMin(){
-      return new Date(this.currentTimestamp-this.xAxisTimeWindow*60000).getTime()
+    getXAxisMin() {
+      return new Date(this.currentTimestamp - this.xAxisTimeWindow * 60000).getTime()
     },
     getOptions() {
       const aux = {
         chart: {
           id: '127.0.0.1:8888',
           stacked: true,
-          horizontal:true,
+          horizontal: true,
           toolbar: {
             show: true
           },
-          columnWidth: `${Math.round(100/this.xAxisTimeWindow)}%`,
+          columnWidth: `${Math.round(100 / this.xAxisTimeWindow)}%`,
           borderRadius: 10,
-          distributed:true,
+          distributed: true,
           zoom: {
             enabled: true
           }
@@ -115,16 +115,16 @@ export default {
       return outputs
     },
   },
-  unmounted(){
-    if(this.xaxisInterval){
+  unmounted() {
+    if (this.xaxisInterval) {
       this.xaxisInterval()
     }
   },
   methods: {
-    setXAxisTimeout(){
-      this.xaxisInterval=setInterval(()=> {
+    setXAxisTimeout() {
+      this.xaxisInterval = setInterval(() => {
         this.currentTimestamp = new Date().getTime()
-      },XAXIS_UPDATE_INTERVAL)
+      }, XAXIS_UPDATE_INTERVAL)
     },
     series() {
       var outputs = this.groupBy
@@ -157,7 +157,7 @@ export default {
         count++;
       })
       this.keys = []
-      this.outputs=aux
+      this.outputs = aux
     },
     senderInfo() {
       axios
@@ -168,6 +168,7 @@ export default {
             throw Error("null or blanK value in sender API")
           } else {
             this.sender = response.data
+            this.series()
           }
 
         }).catch(error => {
@@ -212,8 +213,10 @@ export default {
 .graph {
   display: flex;
   margin-top: 150px;
+  margin-left: 100px;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
 }
 
 #customers {
@@ -242,5 +245,13 @@ export default {
   text-align: left;
   background-color: #04AA6D;
   color: white;
+}
+
+h3 {
+  font-size: large;
+  font-family: Arial, Helvetica, sans-serif;
+}
+h1{
+  font-family: system-ui;
 }
 </style>
