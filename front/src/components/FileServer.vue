@@ -60,7 +60,6 @@ export default {
     setInterval(() => {
       this.senderInfo()
       this.subscriberInfo()
-      this.series()
     }
       , 7 * 1000)
   },
