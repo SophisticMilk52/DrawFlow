@@ -53,7 +53,7 @@ var senders []Sender
 var mutex sync.Mutex
 var wg sync.WaitGroup
 
-func servidor() {
+func server() {
 	addr := "localhost:8888"
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -171,7 +171,7 @@ func sendData(msg Message, t Sender, m *sync.Mutex, wg *sync.WaitGroup) error {
 }
 func listen() {
 	defer wg.Wait()
-	go servidor()
+	go server()
 	fmt.Println("Waiting for clients.....")
 	var input string
 	fmt.Scanln(&input)

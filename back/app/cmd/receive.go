@@ -101,7 +101,6 @@ func handleClientReceive(c net.Conn) {
 
 func init() {
 	rootCmd.AddCommand(receiveCmd)
-	// TODO: Revisar para que sirve ese parametro en blanco
 	receiveCmd.Flags().StringVarP(&channel, "channel", "c", "", "Especify the channel of the client")
 	receiveCmd.MarkFlagRequired("channel")
 }

@@ -40,7 +40,7 @@ to quickly create a Cobra application.`,
 		} else {
 			argument = args[0]
 		}
-		fileExists, err := FileExists(argument)
+		fileExists, err := fileExists(argument)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -81,7 +81,7 @@ func init() {
 	sendCmd.MarkFlagRequired("channel")
 }
 
-func FileExists(path string) (bool, error) {
+func fileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
