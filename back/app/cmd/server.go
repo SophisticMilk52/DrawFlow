@@ -111,6 +111,7 @@ func checkConection(addr string, m *sync.Mutex, wg *sync.WaitGroup) {
 				continue
 			}
 		}
+		break
 	}
 }
 
@@ -125,9 +126,11 @@ func handleClient(c net.Conn, canal chan Message, m *sync.Mutex, wg *sync.WaitGr
 	} else {
 		canal <- receiver
 		if receiver.Type == 0 {
+
 			fmt.Printf("New request arrived in channel %s and adress %s", receiver.Channel, receiver.Addres)
 			fmt.Println("")
 			mapa[receiver.Channel] = append(mapa[receiver.Channel], receiver.Addres)
+
 			t := Receiver{
 				Addres:  receiver.Addres,
 				Channel: receiver.Channel,

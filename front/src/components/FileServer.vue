@@ -133,7 +133,6 @@ export default {
         for (let j = 0; j < this.channels.length; j++) {
           var cont = 0
           for (let index = 0; index < outputs[input].length; index++) {
-
             if (outputs[input][index].channel == this.channels[j]) {
               cont += outputs[input][index].size;
             }

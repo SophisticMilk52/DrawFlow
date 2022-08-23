@@ -14,7 +14,10 @@ func TestFileExists(t *testing.T) {
 		t.Log(err, nil)
 	}
 	val, _ := fileExists(path)
-	t.Logf("The path %s is a valid %t", path, val)
+	if val == true {
+		t.Logf("The path %s is a valid %t", path, val)
+	}
+
 }
 
 func TestFileReader(t *testing.T) {
